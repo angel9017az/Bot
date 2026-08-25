@@ -2,7 +2,7 @@
 const { EmbedBuilder } = require('discord.js');
 
 /**
- * Genera el Embed con el diseño visual del estado de la sesión.
+ * Genera el Embed principal con el estado del servidor.
  */
 function generarEmbedEstadoSesion(datos = {}) {
   const {
@@ -57,4 +57,38 @@ function generarEmbedEstadoSesion(datos = {}) {
     .setTimestamp();
 }
 
-module.exports = { generarEmbedEstadoSesion };
+/**
+ * Genera el Embed decorado para la Votación de la Sesión.
+ */
+function generarEmbedVotacionSesion(totalVotos = 0, totalMods = 0) {
+  return new EmbedBuilder()
+    .setTitle('🗳️ Votación Oficial | Apertura de Sesión')
+    .setColor(0x3498DB)
+    .setDescription('> 📢 **¡Se está evaluando la apertura de una nueva sesión de Rol!**\nVota a continuación para confirmar tu asistencia.')
+    .addFields(
+      { 
+        name: '👥 Votos de Usuarios', 
+        value: `\`\`\`\n${totalVotos} Participante(s)\n\`\`\``, 
+        inline: true 
+      },
+      { 
+        name: '🛡️ Moderadores Confirmados', 
+        value: `\`\`\`\n${totalMods} Staff(s)\n\`\`\``, 
+        inline: true 
+      },
+      {
+        name: '📌 Estado de Votación',
+        value: '```\nEN PROCESO\n```',
+        inline: false
+      }
+    )
+    .setFooter({ 
+      text: 'Usa los botones para registrar, cambiar tu voto o ver la lista' 
+    })
+    .setTimestamp();
+}
+
+module.exports = { 
+  generarEmbedEstadoSesion, 
+  generarEmbedVotacionSesion 
+};
