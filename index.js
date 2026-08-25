@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { obtenerCuenta, actualizarSaldo } = require('./economyManager');
 const { iniciarTickerService } = require('./services/marketTicker');
+const { generarEmbedEstadoSesion } = require('./embedSesion');
 
 // 1. Memoria global para sesiones
 global.sesionesActivas = new Map();
@@ -83,38 +84,79 @@ client.on('messageCreate', async message => {
   }
 });
 
-// 5. Manejo de Comandos Slash
+// 5. Manejador de Interacciones
 client.on('interactionCreate', async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-
-  const command = client.commands.get(interaction.commandName);
-  if (!command) return;
-
   try {
-    await command.execute(interaction);
-  } catch (error) {
-    console.error(error);
-    const contenidoError = { content: '❌ Hubo un error al ejecutar este comando.', flags: MessageFlags.Ephemeral };
-    
-    if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(contenidoError);
-    } else {
-      await interaction.reply(contenidoError);
+    // A) Comandos Slash
+    if (interaction.isChatInputCommand()) {
+      const command = client.commands.get(interaction.commandName);
+      if (command) await command.execute(interaction);
+      return;
     }
+
+    // B) Menú Desplegable (Panel del Staff)
+    if (interaction.isStringSelectMenu()) {
+      if (interaction.customId === 'menu_config_sesion') {
+        // Responder rápido a Discord para evitar que expire la interacción
+        await interaction.deferUpdate();
+
+        const seleccion = interaction.values[0];
+        let nuevosDatos = {};
+
+        if (seleccion === 'opcion_vias') nuevosDatos = { vias: 'Carril Derecho' };
+        if (seleccion === 'opcion_velocidad') nuevosDatos = { limiteVelocidad: '80 MPH' };
+        if (seleccion === 'opcion_adelantamiento') nuevosDatos = { adelantamiento: 'Permitido' };
+        if (seleccion === 'opcion_unirse') nuevosDatos = { metodoUnirse: 'Servidor Privado / Código' };
+        if (seleccion === 'opcion_evento') nuevosDatos = { evento: 'Control Policial activo' };
+
+        const embedActualizado = generarEmbedEstadoSesion({
+          ...nuevosDatos,
+          ultimaActualizacion: 'Recién actualizado'
+        });
+
+        await interaction.editReply({ embeds: [embedActualizado] });
+      }
+      return;
+    }
+
+    // C) Formulario de Inversiones / Modales
+    if (interaction.isModalSubmit()) {
+      if (interaction.customId.startsWith('modal_operar')) {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+        const accion = interaction.fields.getTextInputValue('input_accion').trim().toUpperCase();
+        const cantidad = parseInt(interaction.fields.getTextInputValue('input_cantidad').trim(), 10);
+
+        if (accion !== 'COMPRAR' && accion !== 'VENDER') {
+          return await interaction.editReply({ content: '❌ Debes escribir exactamente COMPRAR o VENDER.' });
+        }
+
+        if (isNaN(cantidad) || cantidad <= 0) {
+          return await interaction.editReply({ content: '❌ Ingresa una cantidad válida mayor a 0.' });
+        }
+
+        await interaction.editReply({ 
+          content: `✅ Transacción de **${accion}** por **${cantidad}** unidades procesada correctamente.` 
+        });
+      }
+      return;
+    }
+
+  } catch (error) {
+    console.error('Error procesando interacción:', error);
   }
 });
 
-// Evento: Bot Listo / Iniciar Ticker de Mercado
+// Evento: Bot Listo / Iniciar Ticker
 client.once('ready', async () => {
   console.log(`🤖 Bot conectado exitosamente como: ${client.user.tag}`);
 
-  // Iniciar el Ticker del Mercado Cripto si se definió la variable en el .env
   const canalTickerId = process.env.CANAL_TICKER_ID;
   if (canalTickerId) {
     await iniciarTickerService(client, canalTickerId);
     console.log(`📈 Servicio de Ticker Financiero en vivo activado en canal ID: ${canalTickerId}`);
   } else {
-    console.log('⚠️ Warning: No se definió CANAL_TICKER_ID en el archivo .env. El Ticker no se auto-publicará.');
+    console.log('⚠️ Warning: No se definió CANAL_TICKER_ID en el archivo .env.');
   }
 });
 
@@ -126,7 +168,7 @@ app.get('/', (req, res) => {
   res.send('API Central de Rolplay operativa.');
 });
 
-// Endpoint de 911 (Roblox -> Discord)
+// Endpoint 911 (Roblox -> Discord)
 app.post('/api/roblox/911', async (req, res) => {
   const { sessionKey, jugador, motivo, ubicacion } = req.body;
 
@@ -162,7 +204,7 @@ app.post('/api/roblox/911', async (req, res) => {
   }
 });
 
-// Endpoint Transacciones del Banco (Roblox / Postman -> Discord)
+// Endpoint Transacciones del Banco
 app.post('/api/roblox/economia/transaccion', (req, res) => {
   const { discordId, monto, tipo } = req.body;
 
@@ -179,11 +221,6 @@ app.post('/api/roblox/economia/transaccion', (req, res) => {
   }
 
   const estadoActualizado = obtenerCuenta(discordId);
-
-  console.log(`\n🏦 [TRANSACCIÓN BANCARIA EN VIVO]`);
-  console.log(`👤 Usuario ID: ${discordId}`);
-  console.log(`💵 Movimiento: $${monto} (${tipo || 'efectivo'})`);
-  console.log(`💳 Nuevo Saldo Banco: $${estadoActualizado.banco}`);
 
   return res.status(200).json({ 
     status: 'Éxito', 
