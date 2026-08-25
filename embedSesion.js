@@ -2,8 +2,7 @@
 const { EmbedBuilder } = require('discord.js');
 
 /**
- * Genera el Embed con la plantilla visual requerida.
- * Si no se pasan parámetros, los campos tomarán el valor por defecto ("Desconocido").
+ * Genera el Embed con el diseño visual del estado de la sesión.
  */
 function generarEmbedEstadoSesion(datos = {}) {
   const {
@@ -11,6 +10,7 @@ function generarEmbedEstadoSesion(datos = {}) {
     vias = 'Desconocido',
     limiteVelocidad = 'Desconocido',
     adelantamiento = 'Desconocido',
+    metodoUnirse = 'Desconocido',
     evento = 'Sin eventos',
     ultimaActualizacion = 'Recién iniciada'
   } = datos;
@@ -33,6 +33,11 @@ function generarEmbedEstadoSesion(datos = {}) {
       { 
         name: '⚠️ Adelantamiento', 
         value: `\`\`\`\n${adelantamiento}\n\`\`\``, 
+        inline: true 
+      },
+      { 
+        name: '🔑 Método de Unirse', 
+        value: `\`\`\`\n${metodoUnirse}\n\`\`\``, 
         inline: true 
       },
       { 
