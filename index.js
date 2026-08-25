@@ -84,7 +84,7 @@ client.on('messageCreate', async message => {
   }
 });
 
-// 5. Manejador de Interacciones
+// 5. Manejador de Interacciones Global
 client.on('interactionCreate', async interaction => {
   try {
     // A) Comandos Slash
@@ -97,7 +97,6 @@ client.on('interactionCreate', async interaction => {
     // B) Menú Desplegable (Panel del Staff)
     if (interaction.isStringSelectMenu()) {
       if (interaction.customId === 'menu_config_sesion') {
-        // Responder rápido a Discord para evitar que expire la interacción
         await interaction.deferUpdate();
 
         const seleccion = interaction.values[0];
